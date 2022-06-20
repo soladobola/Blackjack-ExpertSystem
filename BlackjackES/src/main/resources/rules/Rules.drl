@@ -1,0 +1,634 @@
+package com.sample
+
+import com.mladen.Player;
+import com.mladen.Dealer;
+import com.mladen.Card;
+import com.mladen.Solution;
+
+// ----------- SECTION FLAGS BEGIN --------------------- 
+
+
+rule "check if sum is soft"
+lock-on-active true
+salience 10000
+when
+$p: Player($csum : cardSum)
+exists(Card(symbol.equals("A")) from $p.cards)
+Number(intValue == $csum) from accumulate(Card($cardValue : value) from $p.cards, sum($cardValue))
+then
+$p.setSoft(true);
+update($p)
+end
+ 
+rule "check if cards can split"
+lock-on-active true
+salience 10000
+when
+$p: Player(canSplit == false)
+Number(intValue == 2) from accumulate(Card() from $p.cards, count())
+then
+$p.setCanSplit(true);
+update($p)
+end
+
+rule "You won"
+salience 10000
+when
+$p: Player(cardSum == 21)
+$solution: Solution(action == null)
+then
+$solution.setAction("You Won");
+update($solution)
+end
+
+
+rule "already lost"
+salience 10000
+when
+$p: Player(cardSum > 21)
+$solution: Solution(action == null)
+then
+$solution.setAction("You Lost");
+update($solution)
+end
+
+ 
+ // ----------- SECTION FLAGS END ---------------------
+ 
+ 
+// ----------- SECTION SURRENDER BEGIN ---------------------
+ 
+rule "16 surrenders against dealer 9 through Ace"
+salience 5000
+when
+$player : Player(cardSum == 16, soft == false)
+$dealer : Dealer(cardSum > 8 && cardSum < 12)
+$solution: Solution(action == null)
+then
+$solution.setAction("Surrender");
+update($solution)
+end
+
+rule "15 surrenders against dealer 10"
+salience 5000
+when
+$player : Player(cardSum == 15, soft == false)
+$dealer : Dealer(cardSum == 10)
+$solution: Solution(action == null)
+then
+$solution.setAction("Surrender");
+update($solution)
+end
+
+// ----------- SECTION SURRENDER END ---------------------
+
+
+// ----------- SECTION SPLIT BEGIN ---------------------
+
+rule "Always split aces"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "A") from $player.cards, count())
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+rule "Never split tens"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(value == 10) from $player.cards, count())
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Stand");
+update($player)
+update($solution)
+end
+
+rule "A pair of 9’s splits against dealer 2 through 9, except for 7"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "9") from $player.cards, count())
+$dealer: Dealer(cardSum < 9, cardSum != 7)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+rule "A pair of 9's stand against dealer 10-A's and 7"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(value == 9) from $player.cards, count())
+$dealer: Dealer(cardSum > 9, cardSum == 7)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Stand");
+update($player)
+update($solution)
+end
+
+
+rule "Always split 8’s"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "8") from $player.cards, count())
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+rule "A pair of 7’s splits against dealer 2 through 7"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "7") from $player.cards, count())
+$dealer: Dealer(cardSum > 1 && cardSum < 8)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+rule "A pair of 7's hit against dealer 8-A's"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(value == 7) from $player.cards, count())
+$dealer: Dealer(cardSum > 7 && cardSum < 12)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Hit");
+update($player)
+update($solution)
+end
+
+
+rule "A pair of 6’s splits against dealer 2 through 6"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "6") from $player.cards, count())
+$dealer: Dealer(cardSum > 1 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+rule "A pair of 6's hit against dealer 7-A's"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(value == 6) from $player.cards, count())
+$dealer: Dealer(cardSum > 6 && cardSum < 12)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Hit");
+update($player)
+update($solution)
+end
+
+
+rule "A pair of 5’s doubles against dealer 2 through 9"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "5") from $player.cards, count())
+$dealer: Dealer(cardSum > 1 && cardSum < 10)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Double");
+update($player)
+update($solution)
+end
+
+rule "A pair of 5's hits against dealer 10-A's"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(value == 5) from $player.cards, count())
+$dealer: Dealer(cardSum > 9 && cardSum < 12)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Hit");
+update($player)
+update($solution)
+end
+
+
+rule "A pair of 4’s splits against dealer 5 and 6"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "4") from $player.cards, count())
+$dealer: Dealer(cardSum > 4 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+rule "A pair of 4's hits against dealer 2 through 5 and 7 through A's"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "4") from $player.cards, count())
+$dealer: Dealer(cardSum < 3 && cardSum > 6)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Hit");
+update($player)
+update($solution)
+end
+
+
+rule "A pair of 3’s splits against dealer 2 through 7, otherwise hit"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "3") from $player.cards, count())
+$dealer: Dealer(cardSum > 1 && cardSum < 8)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+
+rule "A pair of 3's hits against dealer 8 through A's"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(value == 3) from $player.cards, count())
+$dealer: Dealer(cardSum > 7 && cardSum < 12)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Hit");
+update($player)
+update($solution)
+end
+
+
+
+rule "A pair of 2’s splits against dealer 2 through 7"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(symbol == "2") from $player.cards, count())
+$dealer: Dealer(cardSum > 1 && cardSum < 8)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Split");
+update($player)
+update($solution)
+end
+
+rule "A pair of 2's hits against dealer 8 through A's"
+salience 999
+when
+$player: Player(canSplit == true)
+Number(intValue == 2) from accumulate(Card(value == 2) from $player.cards, count())
+$dealer: Dealer(cardSum > 7 && cardSum < 12)
+$solution: Solution(action == null)
+then
+$player.setCanSplit(false);
+$solution.setAction("Hit");
+update($player)
+update($solution)
+end
+
+// ----------- SECTION SPLIT END ---------------------
+
+
+// ----------- SECTION SOFT TOTALS BEGIN ---------------------
+
+rule "Soft 20 always stands"
+salience 800
+when
+$player: Player(soft == true, cardSum == 20)
+$solution: Solution(action == null)
+then
+$solution.setAction("Stand");
+update($solution)
+end
+
+rule "Soft 19 doubles against dealer 6, otherwise stand"
+salience 800
+when
+$player: Player(soft == true, cardSum == 19)
+$dealer: Dealer(cardSum == 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "Soft 19 stand against dealer != 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 19)
+$dealer: Dealer(cardSum != 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Stand");
+update($solution)
+end
+
+rule "Soft 18 doubles against dealer 2 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 18)
+$dealer: Dealer(cardSum > 1 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "Soft 18 stands against dealer 7 or 8"
+salience 800
+when
+$player: Player(soft == true, cardSum == 18)
+$dealer: Dealer(cardSum == 7 || cardSum == 8)
+$solution: Solution(action == null)
+then
+$solution.setAction("Stand");
+update($solution)
+end
+
+
+rule "Soft 18 hits against 9 through Ace"
+salience 800
+when
+$player: Player(soft == true, cardSum == 18)
+$dealer: Dealer(cardSum > 8 && cardSum < 11)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+rule "Soft 17 doubles against dealer 3 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 17)
+$dealer: Dealer(cardSum > 2 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "Soft 17 hits against dealer 2 & 7 through A's"
+salience 800
+when
+$player: Player(soft == true, cardSum == 17)
+$dealer: Dealer(cardSum < 3 || cardSum > 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+
+rule "Soft 16 doubles against dealer 4 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 16)
+$dealer: Dealer(cardSum > 3 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "Soft 16 hits against dealer not 4 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 16)
+$dealer: Dealer(cardSum < 4 || cardSum > 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+rule "Soft 15 doubles against dealer 4 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 15)
+$dealer: Dealer(cardSum > 3 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "Soft 15 hits against dealer not 4 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 15)
+$dealer: Dealer(cardSum < 4 || cardSum > 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+rule "Soft 14 doubles against dealer 5 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 14)
+$dealer: Dealer(cardSum > 4 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "Soft 14 hits against dealer not 5 and not 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 14)
+$dealer: Dealer(cardSum != 5 && cardSum != 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+
+rule "Soft 13 doubles against dealer 5 through 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 13)
+$dealer: Dealer(cardSum > 4 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "Soft 13 hits against dealer not 5 and not 6"
+salience 800
+when
+$player: Player(soft == true, cardSum == 13)
+$dealer: Dealer(cardSum != 5 && cardSum != 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+// ----------- SECTION SOFT TOTALS END ---------------------
+
+
+
+// ----------- SECTION HARD TOTALS BEGIN ---------------------
+
+rule "17 and up always stands"
+when
+$player: Player(soft == false, cardSum > 16)
+$solution: Solution(action == null)
+then
+$solution.setAction("Stand");
+update($solution)
+end
+
+rule "16, 15, 14, 13 stands against dealer 2 through 6"
+when
+$player: Player(soft == false && (cardSum > 12  && cardSum < 17))
+$dealer: Dealer(cardSum > 1 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Stand");
+update($solution)
+end
+
+
+rule "16, 15, 14, 13 hits against dealer not 2 through 6"
+when
+$player: Player(soft == false && (cardSum > 12  && cardSum < 17))
+$dealer: Dealer(cardSum > 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end 
+
+rule "12 stands against dealer 4 through 6, otherwise hit"
+when
+$player: Player(soft == false && cardSum == 12)
+$dealer: Dealer(cardSum > 3 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Stand");
+update($solution)
+end
+
+rule "12 hits againt dealer not 4 through 6"
+when
+$player: Player(soft == false && cardSum == 12)
+$dealer: Dealer(cardSum < 4 || cardSum > 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+
+rule "11 always doubles"
+when
+$player: Player(soft == false && cardSum == 11)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "10 doubles against dealer 2 through 9"
+when
+$player: Player(soft == false && cardSum == 10)
+$dealer: Dealer(cardSum > 1 && cardSum < 10)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "10 hits against dealer 10-A's"
+when
+$player: Player(soft == false && cardSum == 10)
+$dealer: Dealer(cardSum > 9 && cardSum < 12)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+
+rule "9 doubles against dealer 3 through 6 otherwise hit"
+when
+$player: Player(soft == false && cardSum == 9)
+$dealer: Dealer(cardSum > 2 && cardSum < 7)
+$solution: Solution(action == null)
+then
+$solution.setAction("Double");
+update($solution)
+end
+
+rule "9 hits against dealer 2 or 7-A's"
+when
+$player: Player(soft == false && cardSum == 9)
+$dealer: Dealer(cardSum == 2 || cardSum > 6)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+rule "8 and below always hits"
+when
+$player: Player(soft == false && cardSum < 9)
+$solution: Solution(action == null)
+then
+$solution.setAction("Hit");
+update($solution)
+end
+
+
+// ----------- SECTION HARD TOTALS END ---------------------
+
+
+
